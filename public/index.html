@@ -27,6 +27,9 @@
   --lcd:#2C3A2E; --lcd-ink:#CFDDC8; --danger:#D97A66; --ok:#8FC2A2; --focus:#E3D3C5;
 }
 *{box-sizing:border-box}
+/* .actions и подобные задают display, а он перебивает браузерное
+   правило для [hidden] — без !important скрытие не срабатывает */
+[hidden]{display:none !important}
 html,body{margin:0;padding:0}
 body{
   background:var(--paper); color:var(--ink);
