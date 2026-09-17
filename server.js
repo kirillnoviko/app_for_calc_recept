@@ -123,12 +123,26 @@ app.post("/api/report", async (req, res) => {
   const ctx = await who(req);
   if (!ctx.user) return res.status(401).json({ error: "откройте приложение из Telegram" });
 
-  const text = String((req.body && req.body.text) || "").slice(0, 3800);
-  if (!text.trim()) return res.status(400).json({ error: "пустой отчёт" });
+  const body = req.body || {};
+  let html, plain;
+
+  if (body.report) {
+    const rep = bot.saneReport(body.report);
+    if (!rep) return res.status(400).json({ error: "отчёт не разобрался" });
+    html = bot.renderReport(rep);
+  } else {
+    plain = String(body.text || "").slice(0, 3800);
+    if (!plain.trim()) return res.status(400).json({ error: "пустой отчёт" });
+  }
+
+  if (html && html.length > 4000)
+    return res.status(413).json({ error: "отчёт слишком большой для одного сообщения" });
+
   if (ctx.dev) return res.json({ ok: true, dev: true });
 
   try {
-    await bot.sendMessage(ctx.user.id, text);
+    if (html) await bot.sendMessage(ctx.user.id, html, { parse_mode: "HTML" });
+    else await bot.sendMessage(ctx.user.id, plain);
     res.json({ ok: true });
   } catch (e) {
     res.status(502).json({ error: "Telegram не принял сообщение: " + e.message });

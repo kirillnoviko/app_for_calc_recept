@@ -21,6 +21,66 @@ function sendMessage(chatId, text, extra) {
   return call("sendMessage", Object.assign({ chat_id: chatId, text }, extra || {}));
 }
 
+function escHtml(s) {
+  return String(s).replace(/[&<>]/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]));
+}
+
+/**
+ * Собирает отчёт в HTML для Telegram.
+ * Списки ингредиентов уходят в <pre>: моноширинный блок выравнивает
+ * колонку с граммовками, иначе на телефоне всё разъезжается.
+ */
+function renderReport(o) {
+  let out = "<b>" + escHtml(o.title || "Отчёт") + "</b>";
+  if (o.sub) out += "\n" + escHtml(o.sub);
+
+  (o.sections || []).forEach(sec => {
+    const rows = sec.rows || [];
+    if (!rows.length && !sec.head) return;
+
+    let body = "";
+    if (sec.head) body += sec.head + "\n";
+    if (sec.note) body += sec.note + "\n";
+
+    let w = 0;
+    rows.forEach(r => { if (String(r[0]).length > w) w = String(r[0]).length; });
+    w = Math.min(w, 22);
+
+    rows.forEach(r => {
+      let n = String(r[0]);
+      if (n.length > w) n = n.slice(0, w - 1) + "…";
+      body += n + ".".repeat(Math.max(2, w - n.length + 2)) + " " + String(r[1]) + "\n";
+    });
+
+    out += "\n<pre>" + escHtml(body.replace(/\s+$/, "")) + "</pre>";
+  });
+
+  (o.totals || []).forEach(t => {
+    out += "\n<b>" + escHtml(t[0]) + ": " + escHtml(t[1]) + "</b>";
+  });
+
+  return out;
+}
+
+/** Отсекает мусор и слишком большие отчёты до отправки. */
+function saneReport(o) {
+  if (!o || typeof o !== "object") return null;
+  const str = (v, n) => String(v == null ? "" : v).slice(0, n);
+  const secs = Array.isArray(o.sections) ? o.sections.slice(0, 30) : [];
+  return {
+    title: str(o.title, 120) || "Отчёт",
+    sub: str(o.sub, 200),
+    sections: secs.map(s => ({
+      head: str(s && s.head, 120),
+      note: str(s && s.note, 200),
+      rows: (Array.isArray(s && s.rows) ? s.rows.slice(0, 60) : [])
+        .map(r => [str(r && r[0], 60), str(r && r[1], 30)])
+    })),
+    totals: (Array.isArray(o.totals) ? o.totals.slice(0, 6) : [])
+      .map(t => [str(t && t[0], 60), str(t && t[1], 30)])
+  };
+}
+
 /** Ставит вебхук на наш адрес. Вызывается один раз при старте. */
 async function setWebhook(publicUrl, secretPath) {
   if (!TOKEN || !publicUrl) return;
@@ -139,4 +199,4 @@ async function handleUpdate(update) {
   await sendMessage(chatId, out, kb);
 }
 
-module.exports = { handleUpdate, setWebhook, sendMessage };
+module.exports = { handleUpdate, setWebhook, sendMessage, renderReport, saneReport };

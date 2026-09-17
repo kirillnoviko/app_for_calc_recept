@@ -161,7 +161,7 @@ dialog{border:none;border-radius:.7rem;padding:0;background:var(--card);color:va
 .ac li.new{color:var(--ink-soft);font-size:.84rem}
 .dirrow{display:flex;align-items:center;gap:.45rem;margin-bottom:.4rem}
 .dirrow input{flex:1 1 auto;min-width:0;background:var(--paper);color:var(--ink);
-  border:1px solid var(--hair);border-radius:.4rem;padding:.42rem .45rem;font:inherit;font-size:.9rem}
+  border:1px solid var(--hair);border-radius:.4rem;padding:.42rem .45rem;font:inherit;font-size:1rem}
 .dirrow select{flex:0 0 9rem;background:var(--paper);color:var(--ink);border:1px solid var(--hair);
   border-radius:.4rem;padding:.42rem .3rem;font:inherit;font-size:.82rem}
 .dirrow .cnt{flex:0 0 2.6rem;text-align:right;color:var(--ink-soft);font-size:.8rem;
@@ -171,15 +171,15 @@ dialog{border:none;border-radius:.7rem;padding:0;background:var(--card);color:va
 .repl .q{font-size:.86rem;margin-bottom:.6rem;line-height:1.35}
 .repl select,.repl input{width:100%;background:var(--card);color:var(--ink);
   border:1px solid var(--hair);border-radius:.4rem;padding:.44rem .45rem;
-  font:inherit;font-size:.9rem;margin-bottom:.45rem}
+  font:inherit;font-size:1rem;margin-bottom:.45rem}
 .repl .or{font-size:.78rem;color:var(--ink-soft);margin:.1rem 0 .35rem}
 .viewpic{width:100%;max-height:11rem;object-fit:cover;border-radius:.5rem;
   margin-bottom:.9rem;background:var(--paper)}
 .usedin{font-size:.84rem;color:var(--ink-soft);margin-top:.9rem;line-height:1.4}
 .ta{width:100%;min-height:8.5rem;background:var(--paper);color:var(--ink);
   border:1px solid var(--hair);border-radius:.45rem;padding:.55rem;
-  font:inherit;font-size:.88rem;line-height:1.45;resize:vertical}
-.ta.mono{font-family:"IBM Plex Mono",monospace;font-size:.78rem;min-height:7rem}
+  font:inherit;font-size:1rem;line-height:1.45;resize:vertical}
+.ta.mono{font-family:"IBM Plex Mono",monospace;font-size:1rem;min-height:7rem}
 .prev{background:var(--paper);border:1px solid var(--hair);border-radius:.5rem;
   padding:.7rem .75rem;margin:.8rem 0}
 .prev .line{padding:.12rem 0}
@@ -188,6 +188,7 @@ dialog{border:none;border-radius:.7rem;padding:0;background:var(--card);color:va
 .note.warnnote{color:var(--danger)}
 dialog::backdrop{background:rgba(20,16,13,.55)}
 .dlg{padding:1.1rem}
+.dlg:focus{outline:none}
 .dlg h3{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:1.15rem;margin:0 0 .9rem}
 .photo{display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap}
 .photo .preview{width:5.4rem;height:5.4rem;border-radius:.5rem;object-fit:cover;
@@ -199,7 +200,7 @@ dialog::backdrop{background:rgba(20,16,13,.55)}
 .ing select{flex:1 1 auto;min-width:0}
 .ing select.u{flex:0 0 4.2rem}
 .ing input,.ing select{background:var(--paper);color:var(--ink);border:1px solid var(--hair);
-  border-radius:.4rem;padding:.42rem .45rem;font:inherit;font-size:.9rem}
+  border-radius:.4rem;padding:.42rem .45rem;font:inherit;font-size:1rem}
 .ing .x{flex:0 0 1.9rem;background:none;border:none;color:var(--ink-soft);font-size:1.1rem;
   cursor:pointer;line-height:1;padding:.2rem;border-radius:.3rem}
 .ing .x:hover{color:var(--danger)}
@@ -299,9 +300,15 @@ dialog::backdrop{background:rgba(20,16,13,.55)}
     <div id="shiftList"></div>
   </section>
   <section class="block">
+    <div class="seg" id="shiftSeg" role="group" aria-label="Что показать">
+      <button type="button" data-sv="buy" aria-pressed="true">Закупка</button>
+      <button type="button" data-sv="cook" aria-pressed="false">Готовка</button>
+    </div>
+  </section>
+  <section class="block">
     <div class="readout" id="shiftRead"></div>
     <div class="actions">
-      <button class="btn" id="shiftCopy">Скопировать закупку</button>
+      <button class="btn" id="shiftCopy">Скопировать</button>
       <button class="btn" id="shiftSend">Отправить в чат</button>
       <button class="btn quiet" id="shiftClear">Очистить смену</button>
     </div>
@@ -309,12 +316,13 @@ dialog::backdrop{background:rgba(20,16,13,.55)}
 </div>
 
   <div class="adminbar">
-    <span class="who" id="who">Демо-режим. В Telegram права администратора определяются по вашему ID.</span>
+    <span class="who" id="who"></span>
     <span class="toggle" id="saveState"></span>
+    <label class="toggle"><input type="checkbox" id="adminToggle"><span>Режим администратора</span></label>
   </div>
 </div>
 
-<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<dialog id="dlg"><div class="dlg" id="dlgBody" tabindex="-1"></div></dialog>
 
 <script>
 (function(){
@@ -365,7 +373,7 @@ var SEED = {
 };
 
 var db = {ings:[], fills:[], comps:[], forms:[], shift:[]};
-var rev = 0, booted = false;
+var rev = 0, booted = false, canAdmin = false;
 
 var INIT = (window.Telegram && window.Telegram.WebApp) ? (window.Telegram.WebApp.initData || "") : "";
 
@@ -391,7 +399,7 @@ function status(text, bad){
   el.style.color = bad ? "var(--danger)" : "var(--ink-soft)";
 }
 var sel = {kind:"comp", id:null, form:null};
-var isAdmin = false, mode = "form", tab = "calc";
+var isAdmin = false, mode = "form", tab = "calc", shiftView = "buy";
 
 /* Сохранение отложенное: правки копятся и уходят одним PUT.
    rev защищает от затирания чужих изменений. */
@@ -661,7 +669,7 @@ function calcCore(o){
     var base = yield_(f);
     var mass = fillingTotal * (l.p / 100);
     out.push({
-      name: f.name, pct: l.p, mass: mass, k: base > 0 ? mass/base : 0,
+      fid: f.id, name: f.name, pct: l.p, mass: mass, k: base > 0 ? mass/base : 0,
       rows: f.items.map(function(i){
         return {id:i.i, n:ingName(i.i), u:i.u, v: base > 0 ? i.a * (mass/base) : 0};
       })
@@ -783,23 +791,107 @@ $("modeSeg").addEventListener("click", function(e){
   if(!m || m === mode) return;
   mode = m; syncBatch(); renderAll();
 });
+$("shiftSeg").addEventListener("click", function(e){
+  var v = e.target.getAttribute && e.target.getAttribute("data-sv");
+  if(!v || v === shiftView) return;
+  shiftView = v; renderShift();
+});
 $("tabs").addEventListener("click", function(e){
   var t = e.target.getAttribute && e.target.getAttribute("data-tab");
   if(!t || t === tab) return;
   tab = t; renderAll();
 });
-
-
-function reportText(c){
-  var txt = c.title + " \u2014 " + c.head + "\n" + formLine(c) + "\n";
-  var single = c.layers.length === 1 && c.layers[0].pct === 100;
-  c.layers.forEach(function(L, i){
-    if(!single) txt += "\n" + (i+1) + ". " + L.name + " (" + num(L.pct,0) + "%, " + num(L.mass) + " г)\n";
-    L.rows.forEach(function(r){ txt += r.n + ": " + num(r.v, r.u==="шт"?2:1) + " " + r.u + "\n"; });
+/* Права подтверждает сервер по подписи initData.
+   Галочка — это запрос, а не разрешение: отказ снимает её обратно. */
+$("adminToggle").addEventListener("change", function(e){
+  var box = e.target;
+  if(!box.checked){ isAdmin = false; status(""); renderAll(); return; }
+  box.disabled = true;
+  status("проверяю права\u2026");
+  api("/api/me").then(function(me){
+    box.disabled = false;
+    if(me.isAdmin){ isAdmin = true; status("режим администратора"); }
+    else{
+      box.checked = false; isAdmin = false;
+      status("у вас нет прав администратора", true);
+    }
+    renderAll();
+  }).catch(function(err){
+    box.disabled = false; box.checked = false; isAdmin = false;
+    status("не проверить права: " + err.message, true);
+    renderAll();
   });
-  txt += "\nИтого начинки: " + num(c.total) + " г";
-  if(c.corpus > 0) txt += "\nШоколад на корпус: \u2248" + num(c.corpus) + " г";
-  return txt;
+});
+
+/* Отчёт собирается структурой: так его можно и скопировать текстом,
+   и отправить в Telegram с нормальной вёрсткой. */
+function val(r){ return num(r.v, r.u === "шт" ? 2 : 1) + " " + r.u; }
+
+function reportObj(c){
+  var single = c.layers.length === 1 && c.layers[0].pct === 100;
+  return {
+    title: c.title,
+    sub: formLine(c) + " \u00b7 " + c.head,
+    sections: c.layers.map(function(L, i){
+      return {
+        head: single ? "" : (i+1) + ". " + L.name + " \u2014 " + num(L.pct,0) + "%, " + num(L.mass) + " г",
+        rows: L.rows.map(function(r){ return [r.n, val(r)]; })
+      };
+    }),
+    totals: [["Итого начинки", num(c.total) + " г"]].concat(
+      c.corpus > 0 ? [["Шоколад на корпус", "\u2248 " + num(c.corpus) + " г"]] : [])
+  };
+}
+
+function shiftBuyObj(){
+  var t = shiftTotals();
+  return {
+    title: "Закупка на смену",
+    sub: db.shift.length + " поз. " + shiftFormsLine(),
+    sections: [{head: "", rows: t.rows.map(function(r){ return [r.n, val(r)]; })}],
+    totals: [["Итого начинки", num(t.filling) + " г"]].concat(
+      t.corpus > 0 ? [["Шоколад на корпус", "\u2248 " + num(t.corpus) + " г"]] : [])
+  };
+}
+
+function shiftCookObj(){
+  var bs = shiftBatches();
+  return {
+    title: "Что варить",
+    sub: bs.length + " замес(ов) " + shiftFormsLine(),
+    sections: bs.map(function(b, i){
+      return {
+        head: (i+1) + ". " + b.name + " \u2014 " + num(b.mass) + " г",
+        note: "Идёт в: " + b.from.join(", "),
+        rows: b.rows.map(function(r){ return [r.n, val(r)]; })
+      };
+    }),
+    totals: [["Всего начинки", num(bs.reduce(function(s,b){ return s + b.mass; }, 0)) + " г"]]
+  };
+}
+
+function shiftFormsLine(){
+  var fm = {}, fo = [];
+  db.shift.forEach(function(it){
+    var c = calcCore(it);
+    if(!c || !c.formName) return;
+    if(!fm[c.formName]){ fm[c.formName] = 0; fo.push(c.formName); }
+    fm[c.formName] += c.formCount;
+  });
+  return fo.length ? "\u00b7 " + fo.map(function(n){ return n + " \u00d7 " + fm[n]; }).join(", ") : "";
+}
+
+/* Тот же отчёт простым текстом — для копирования в буфер. */
+function reportToText(o){
+  var s = o.title + "\n" + (o.sub || "") + "\n";
+  o.sections.forEach(function(sec){
+    if(sec.head) s += "\n" + sec.head + "\n";
+    if(sec.note) s += sec.note + "\n";
+    sec.rows.forEach(function(r){ s += r[0] + ": " + r[1] + "\n"; });
+  });
+  s += "\n";
+  o.totals.forEach(function(t){ s += t[0] + ": " + t[1] + "\n"; });
+  return s.trim();
 }
 function copyText(txt, btn, label){
   var done = function(){
@@ -813,7 +905,7 @@ function copyText(txt, btn, label){
 }
 $("copyBtn").addEventListener("click", function(){
   var c = calc(); if(!c) return;
-  copyText(reportText(c), this, "Скопировать");
+  copyText(reportToText(reportObj(c)), this, "Скопировать");
 });
 function fb(txt, done){
   var ta = document.createElement("textarea");
@@ -1003,7 +1095,7 @@ function viewFill(f){
   dlgBody.innerHTML = h;
   $("vf_close").addEventListener("click", closeDlg);
   if(isAdmin) $("vf_edit").addEventListener("click", function(){ closeDlg(); openFill(f); });
-  dlg.showModal();
+  showDlg();
 }
 
 /* ---------- просмотр состава конфеты ---------- */
@@ -1048,7 +1140,7 @@ function viewComp(c){
   dlgBody.innerHTML = h;
   $("vc_close").addEventListener("click", closeDlg);
   if(isAdmin) $("vc_edit").addEventListener("click", function(){ closeDlg(); openComp(c); });
-  dlg.showModal();
+  showDlg();
 }
 
 /* ---------- справочник: переименование и замена ---------- */
@@ -1179,12 +1271,11 @@ function openDir(){
 
     if(afterLine.nextSibling) box.insertBefore(panel, afterLine.nextSibling);
     else box.appendChild(panel);
-    fresh.focus();
   }
 
   draw();
   $("dir_close").addEventListener("click", closeDlg);
-  dlg.showModal();
+  showDlg();
 }
 
 /* ---------- импорт рецепта из текста ---------- */
@@ -1258,7 +1349,7 @@ function openImport(){
     save(); closeDlg(); renderAll();
   });
 
-  dlg.showModal();
+  showDlg();
 }
 
 /* ---------- резервная копия ---------- */
@@ -1312,7 +1403,7 @@ function openBackup(){
     save(); closeDlg(); renderAll();
   });
 
-  dlg.showModal();
+  showDlg();
 }
 
 /* ---------- смена ---------- */
@@ -1348,6 +1439,9 @@ function renderShift(){
     line.appendChild(body); line.appendChild(x);
     box.appendChild(line);
   });
+  Array.prototype.forEach.call($("shiftSeg").children, function(b){
+    b.setAttribute("aria-pressed", b.getAttribute("data-sv") === shiftView ? "true" : "false");
+  });
   renderShiftReadout();
 }
 
@@ -1374,7 +1468,63 @@ function shiftTotals(){
   return {rows:rows, filling:filling, corpus:corpus, pieces:pieces, broken:broken};
 }
 
+/* Список готовки: одинаковые начинки из разных позиций сводятся
+   в один замес — варить их по отдельности незачем. */
+function shiftBatches(){
+  var map = {}, order = [];
+  db.shift.forEach(function(it){
+    var c = calcCore(it);
+    if(!c) return;
+    c.layers.forEach(function(L){
+      if(!map[L.fid]){
+        map[L.fid] = {fid:L.fid, name:L.name, mass:0, from:[]};
+        order.push(L.fid);
+      }
+      map[L.fid].mass += L.mass;
+      var tag = c.title + (c.formName ? " (" + c.formName + ")" : "");
+      if(map[L.fid].from.indexOf(tag) < 0) map[L.fid].from.push(tag);
+    });
+  });
+  return order.map(function(k){
+    var b = map[k], f = fillById(b.fid);
+    var base = f ? yield_(f) : 0;
+    b.rows = (f && base > 0)
+      ? f.items.map(function(i){ return {n: ingName(i.i), u:i.u, v: i.a * (b.mass/base)}; })
+      : [];
+    return b;
+  }).sort(function(a,b){ return b.mass - a.mass; });
+}
+
+function renderShiftCook(){
+  var el = $("shiftRead");
+  var bs = shiftBatches();
+  if(!bs.length){
+    el.innerHTML = '<div class="head"><span class="t">Что варить</span></div>' +
+      '<div class="hintline">Здесь появятся замесы: для каждой начинки один список, ' +
+      'даже если она стоит в нескольких позициях смены.</div>';
+    return;
+  }
+  var total = bs.reduce(function(s,b){ return s + b.mass; }, 0);
+  var h = '<div class="head"><span class="t">Что варить</span><span class="k">' +
+          bs.length + (bs.length === 1 ? ' замес' : bs.length < 5 ? ' замеса' : ' замесов') +
+          '</span></div>';
+  bs.forEach(function(b, i){
+    h += '<div class="lay"><span class="t">' + (i+1) + '. ' + esc(b.name) + '</span>' +
+         '<span class="r"></span><span class="g">' + num(b.mass) + ' г</span></div>';
+    b.rows.forEach(function(r){
+      h += '<div class="line"><span class="nm">' + esc(r.n) + '</span><span class="dots"></span>' +
+           '<span class="val">' + num(r.v, r.u === "шт" ? 2 : 1) + " " + r.u + '</span></div>';
+    });
+    h += '<div class="hintline" style="margin-top:.35rem">Идёт в: ' + esc(b.from.join(", ")) + '</div>';
+  });
+  h += '<div class="line total"><span class="nm">Всего начинки</span><span class="dots"></span>' +
+       '<span class="val">' + num(total) + ' г</span></div>';
+  h += '<div class="hintline">Одна и та же начинка из разных позиций сведена в один замес.</div>';
+  el.innerHTML = h;
+}
+
 function renderShiftReadout(){
+  if(shiftView === "cook"){ renderShiftCook(); return; }
   var el = $("shiftRead");
   if(!db.shift.length){
     el.innerHTML = '<div class="head"><span class="t">Список закупки</span></div>' +
@@ -1411,28 +1561,6 @@ function renderShiftReadout(){
   el.innerHTML = h;
 }
 
-function shiftText(){
-  var t = shiftTotals();
-  var s = "Закупка на смену \u2014 " + db.shift.length + " поз.\n";
-  var fm = {}, fo = [];
-  db.shift.forEach(function(it){
-    var c = calcCore(it);
-    if(!c || !c.formName) return;
-    if(!fm[c.formName]){ fm[c.formName] = 0; fo.push(c.formName); }
-    fm[c.formName] += c.formCount;
-  });
-  if(fo.length) s += "Формы: " + fo.map(function(n){ return n + " \u00d7 " + fm[n]; }).join(", ") + "\n";
-  s += "\n";
-  db.shift.forEach(function(it, i){
-    var c = calcCore(it);
-    s += (i+1) + ". " + (c ? c.title : "\u2014") + " \u2014 " + shiftLabel(it) + "\n";
-  });
-  s += "\nИнгредиенты:\n";
-  t.rows.forEach(function(r){ s += r.n + ": " + num(r.v, r.u === "шт" ? 2 : 1) + " " + r.u + "\n"; });
-  s += "\nИтого начинки: " + num(t.filling) + " г";
-  if(t.corpus > 0) s += "\nШоколад на корпус: \u2248" + num(t.corpus) + " г";
-  return s;
-}
 
 $("addShift").addEventListener("click", function(){
   var c = calc();
@@ -1447,27 +1575,29 @@ $("shiftClear").addEventListener("click", function(){
   if(!confirm("Очистить смену целиком?")) return;
   db.shift = []; renderAll();
 });
+function shiftObj(){ return shiftView === "cook" ? shiftCookObj() : shiftBuyObj(); }
+
 $("shiftCopy").addEventListener("click", function(){
   if(!db.shift.length) return;
-  copyText(shiftText(), this, "Скопировать закупку");
+  copyText(reportToText(shiftObj()), this, "Скопировать");
 });
 $("shiftSend").addEventListener("click", function(){
   if(!db.shift.length) return;
-  sendToChat(shiftText(), this);
+  sendToChat(shiftObj(), this);
 });
 $("sendBtn").addEventListener("click", function(){
   var c = calc(); if(!c) return;
-  sendToChat(reportText(c), this);
+  sendToChat(reportObj(c), this);
 });
 
 /* отправка отчёта в переписку с ботом */
-function sendToChat(text, btn){
+function sendToChat(obj, btn){
   var label = btn ? btn.textContent : "";
   if(btn) btn.textContent = "Отправляю\u2026";
   api("/api/report", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({text: text})
+    body: JSON.stringify({report: obj})
   }).then(function(){
     if(btn){
       btn.textContent = "Отправлено";
@@ -1526,6 +1656,11 @@ function photoControl(obj){
 /* ---------- диалоги ---------- */
 var dlg = $("dlg"), dlgBody = $("dlgBody");
 function closeDlg(){ try{ dlg.close(); }catch(e){} }
+/* окно открывается без автофокуса на поле: иначе на телефоне сразу лезет клавиатура */
+function showDlg(){
+  try{ dlg.showModal(); }catch(e){ return; }
+  try{ dlgBody.focus({preventScroll:true}); }catch(e){}
+}
 dlg.addEventListener("click", function(e){ if(e.target === dlg) closeDlg(); });
 
 function openForm(f){
@@ -1567,7 +1702,7 @@ function openForm(f){
     if(sel.form === d.id) sel.form = db.forms[0] ? db.forms[0].id : null;
     save(); closeDlg(); renderAll();
   });
-  dlg.showModal();
+  showDlg();
 }
 
 function openFill(r){
@@ -1644,7 +1779,7 @@ function openFill(r){
     }
     save(); closeDlg(); renderAll();
   });
-  dlg.showModal();
+  showDlg();
 }
 
 function openComp(c){
@@ -1739,7 +1874,7 @@ function openComp(c){
     }
     save(); closeDlg(); renderAll();
   });
-  dlg.showModal();
+  showDlg();
 }
 
 document.body.addEventListener("click", function(e){
@@ -1756,19 +1891,21 @@ document.body.addEventListener("click", function(e){
 function boot(){
   status("загружаю\u2026");
   api("/api/state").then(function(st){
-    isAdmin = !!st.isAdmin;
+    canAdmin = !!st.isAdmin;
+    isAdmin = false;                 /* включается тумблером вручную */
     rev = st.rev;
+    document.getElementById("adminToggle").disabled = false;
 
     if(st.data){
       db = normalize(st.data);
       booted = true;
-      status(isAdmin ? "" : "только чтение");
+      status("");
       syncDefaults(); renderAll();
       return;
     }
 
     /* база пустая: первый администратор заливает стартовый набор */
-    if(!isAdmin){
+    if(!canAdmin){
       db = normalize(null); booted = true;
       status("база пустая, ждём администратора", true);
       renderAll();
@@ -1776,6 +1913,8 @@ function boot(){
     }
     db = normalize(clone(SEED));
     booted = true;
+    isAdmin = true;                  /* первый заход: заливаем стартовый набор */
+    document.getElementById("adminToggle").checked = true;
     syncDefaults(); renderAll();
     save();
   }).catch(function(e){
